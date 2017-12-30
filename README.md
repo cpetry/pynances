@@ -8,6 +8,16 @@ Python library to read in csv files and print out some graphs.
 
 ### Security: Every file and every data is processed and displayed locally! 
 
+Categories can be defined like this:
+```python
+categories = {
+    'Overhead'     : ['Evil landlord', 'Insurance'],
+    'Orderings'    : ['Amazon', 'Paypal'],
+    'Housekeeping' : ['Rewe', 'Aldi', 'Real', 'Edeka', 'E-Center', 'Rossmann', 'OBI', 'LIDL'],
+    'Gas'          : ['Aral', 'Esso', 'Shell', 'Total', 'Jet', 'OMV', 'ELO', 'SUPOL'],    
+    'Income'       : ['Some Company']}
+```
+
 Example graph outputs (plotly) see below:
 
 ![Expenses screenshot](https://github.com/cpetry/pynances/blob/master/screenshot_expenses.PNG "Expenses")
