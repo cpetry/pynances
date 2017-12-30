@@ -18,6 +18,9 @@ categories = {
     'Income'       : ['Some Company']}
 ```
 
+Example html output (plotly) see here:
+https://github.com/cpetry/pynances/blob/master/example.html
+
 Example graph outputs (plotly) see below:
 
 ![Expenses screenshot](https://github.com/cpetry/pynances/blob/master/screenshot_expenses.PNG "Expenses")
