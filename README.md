@@ -1,7 +1,13 @@
 # Pynances
-Python library to read in csv files and print out some statistics
+Python library to read in csv files and print out some graphs.
 
-Currently usable inside python notebooks (jupyter).
+- Currently only usable inside python notebooks (jupyter).
+- Categories can be defined by the user himself.
+- Multiple bank accounts can be merged together.
+- Annuity loans can be calculated and plotted as graph ouput.
+
+### Security: Every file and every data is processed and displayed locally! 
+
 Example graph outputs (plotly) see below:
 
 ![Expenses screenshot](https://github.com/cpetry/pynances/blob/master/screenshot_expenses.PNG "Expenses")
