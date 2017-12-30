@@ -15,16 +15,17 @@ class VR(object):
         return currentMoney
 
     @staticmethod
-    def readCSV_giro(self, filename):
+    def readCSV_giro(self, filename, columnNaming):
         locale.setlocale(locale.LC_NUMERIC, '')
         df = pd.read_csv(filename, skiprows=12, skipfooter=2, sep=';', engine='python', parse_dates=[0,1], \
                          converters={'Umsatz': lambda x: float(x.replace('.','').replace(',','.'))}, dayfirst=True, index_col=0)
-        df.rename(columns={'Empfänger/Zahlungspflichtiger': 'Auftraggeber'}, inplace=True)
-        df.rename(columns={'Vorgang/Verwendungszweck': 'Buchungstext'}, inplace=True)
-        df.rename(columns={'Umsatz': 'Betrag'}, inplace=True)
+        df.rename(columns={'Belegdatum': columnNaming._date}, inplace=True)
+        df.rename(columns={'Empfänger/Zahlungspflichtiger': columnNaming._client}, inplace=True)
+        df.rename(columns={'Vorgang/Verwendungszweck': columnNaming._info}, inplace=True)
+        df.rename(columns={'Umsatz': columnNaming._value}, inplace=True)
         
         # convert 'S'oll -> negative values
-        df.loc[df.ix[:,-1] == 'S','Betrag'] = 0 - df[df.ix[:,-1] == 'S'].Betrag
+        df.loc[df.ix[:,-1] == 'S', columnNaming._value] = 0 - df[df.ix[:,-1] == 'S'][columnNaming._value]
         df.drop('Auftraggeber/Zahlungsempfänger', axis=1, inplace=True)
         df.drop('Konto-Nr.', axis=1, inplace=True)
         df.drop('IBAN', axis=1, inplace=True)

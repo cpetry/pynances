@@ -27,7 +27,8 @@ class DKB(object):
         locale.setlocale(locale.LC_NUMERIC, '')
         df = pd.read_csv(filename, skiprows=6, sep=';', engine='python', parse_dates=[0,1], \
                          converters={'Betrag (EUR)': lambda x: float(x.replace('.','').replace(',','.'))}, \
-                         dayfirst=True, index_col=0)
+                         dayfirst=True)
+        df.rename(columns={'Buchungstag': columnNaming._date}, inplace=True)
         df.rename(columns={'Auftraggeber / Begünstigter': columnNaming._client}, inplace=True)
         df.rename(columns={'Betrag (EUR)': columnNaming._value}, inplace=True)
         df = df[df.columns[~df.columns.str.contains('Unnamed:')]]
@@ -51,7 +52,7 @@ class DKB(object):
         locale.setlocale(locale.LC_NUMERIC, '')
         df = pd.read_csv(filename, skiprows=7, sep=';', engine='python', parse_dates=[1,2], \
                          converters={'Betrag (EUR)': lambda x: float(x.replace('.','').replace(',','.'))}, dayfirst=True, index_col=0)
-        df.set_index('Belegdatum', inplace=True)
+        df.rename(columns={'Belegdatum': columnNaming._date}, inplace=True)
         df.rename(columns={'Beschreibung': columnNaming._client}, inplace=True)
         df.rename(columns={'Betrag (EUR)': columnNaming._value}, inplace=True)
         df = df[df.columns[~df.columns.str.contains('Unnamed:')]]

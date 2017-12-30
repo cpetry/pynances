@@ -1,7 +1,7 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import plotly
-from plotly.graph_objs import Bar, Layout, Area
+from plotly.graph_objs import Bar, Layout, Scatter
 
 class Annuity():
     class AnnuityInfo():
@@ -31,42 +31,48 @@ class Annuity():
         annuityDataGroup = []
         self.annuityCurrentMonth(self._annuityInfo, annuityDataGroup)
         deltaYears = annuityDataGroup[0][-1]._date.year - datetime.now().year
+        startMonth = datetime.now().month
+        endMonth = annuityDataGroup[0][-1]._date.month
+        
+        if startMonth > endMonth:
+            deltaMonths = startMonth - 12 + endMonth
+        else:
+            deltaMonths = endMonth - startMonth
+        
         loan = self._annuityInfo[0]._loan
         interest = self._annuityInfo[0]._interest
         annuity = self._annuityInfo[0]._annuity
         
-        titleStr = "Time: " + str(deltaYears) + " Years\n" + "Loan: " + str(loan) + "€ Interest: " + str(interest) + " Annuity: " + str(annuity) + "€"
+        titleStr = "Time: " + "{:10.2f}".format(deltaYears + (deltaMonths/12)) + " Years\n" + "Loan: " + str(loan) + "€ Interest: " + str(interest) + " Annuity: " + str(annuity) + "€"
         
         data = []
-        for annuityData in annuityDataGroup:
-        
-            dataLoan = [x._loan for x in annuityData]
-            dataDates = [x._date for x in annuityData]
-            dataInterest = [x._interest for x in annuityData]
-            dataRepayment = [x._repayment for x in annuityData]
 
+        for annuityData in annuityDataGroup:
+            dataDates     = [x._date for x in annuityData]
+            dataLoan      = [x._loan for x in annuityData]
+            dataInterest  = [x._interest for x in annuityData]
+            dataRepayment = [x._repayment for x in annuityData]
+            
             data.append(
-                Bar(
+                Scatter(
                     x=dataDates,
                     y=dataRepayment,
                     name='repayment',
-                    hoverlabel=dict( font=dict(color='white', size=8))
                 )
             )
             data.append(
-                Bar(
+                Scatter(
                     x=dataDates,
                     y=dataInterest,
                     name='interest',
-                    hoverlabel=dict( font=dict(color='white', size=8))
                 )
             )
             data.append(
-                Bar(
+                Scatter(
                     x=dataDates,
                     y=dataLoan,
                     name='loan',
-                    hoverlabel=dict( font=dict(color='white', size=8))
+                    fill='tonexty'
                 )
             )
         
@@ -79,6 +85,15 @@ class Annuity():
                 autosize=True,
             )
         })
+        
+        return plotly.offline.plot({
+            "data": data,
+            "layout": Layout(
+                barmode='stack',
+                title=titleStr,
+                autosize=True,
+            )
+        }, output_type='div')
         
     def annuityCurrentMonth(self, annuityInfoGroup, annuityDataGroup):
         completeLoan = 0

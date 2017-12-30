@@ -111,6 +111,9 @@ class Pynance():
         
         self.currentMoney[accountNumber] = currentMoney
 
+        #print(df.head())
+        df.set_index(self.columnNaming._date, inplace=True)
+        
         if isinstance(self.df, pd.DataFrame):
             self.df = self.df.append(df)
         else:
@@ -177,9 +180,10 @@ class Pynance():
                     }]
         })
         
-    def plotMonthlyStackedBar(self, columnDict, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, showUnknownTypes=True):
+    def plotMonthlyStackedBar(self, columnDict, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, showUnknownTypes=True, plotInNotebook=True):
         columnValue = self.columnNaming._value
         columnInfo = self.columnNaming._info
+        columnDate = self.columnNaming._date
 
         ausgaben = self.createMonthlySums(columnDict, filterPosValues, filterNegValues, negateValues)
         
@@ -191,7 +195,9 @@ class Pynance():
         ausgabenValue = ausgaben.unstack(1)[columnValue].abs()
         ausgabenValue.reset_index(inplace=True)
         #print(ausgabenValue.head())
-        if 'index' in ausgabenValue.columns:
+        if columnDate in ausgabenValue.columns:
+            ausgabenValue = ausgabenValue.set_index(columnDate)
+        elif 'index' in ausgabenValue.columns:
             ausgabenValue = ausgabenValue.set_index('index')
         
         plotColumnsList = []
@@ -220,12 +226,20 @@ class Pynance():
                 ),
             )
 
-        # IPython notebook
+        # IPython notebook        
         plotly.offline.iplot({
-        "data": data,
-        "layout": Layout(
-                barmode='stack',
-                title=plotTitle,
-                autosize=True,
-            )
-        })
+                "data": data,
+                "layout": Layout(
+                    barmode='stack',
+                    title=plotTitle,
+                    autosize=True,
+                )
+            })
+        return plotly.offline.plot({
+            "data": data,
+            "layout": Layout(
+                    barmode='stack',
+                    title=plotTitle,
+                    autosize=True,
+                )
+            }, output_type='div')
