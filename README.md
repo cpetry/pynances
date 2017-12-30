@@ -1,5 +1,5 @@
 # Pynances
-Python library to read in csv files and print out some graphs.
+Python library to read in bank account csv files and print out some financial graphs.
 
 - Currently only usable inside python notebooks (jupyter).
 - Categories can be defined by the user himself.
