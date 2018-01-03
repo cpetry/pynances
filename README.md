@@ -1,7 +1,8 @@
 # Pynances
 Python library to read in bank account csv files and print out some financial graphs.
 
-- Currently only usable inside python notebooks (jupyter).
+- Usable inside python notebooks (jupyter).
+- Can generate interactive (javascript) local html pages. 
 - Categories can be defined by the user himself.
 - Multiple bank accounts can be merged together.
 - Annuity loans can be calculated and plotted as graph ouput.
@@ -17,9 +18,6 @@ categories = {
     'Gas'          : ['Aral', 'Esso', 'Shell', 'Total', 'Jet', 'OMV', 'ELO', 'SUPOL'],    
     'Income'       : ['Some Company']}
 ```
-
-Example html output (plotly) see here:
-https://github.com/cpetry/pynances/blob/master/example.html
 
 Example graph outputs (plotly) see below:
 
