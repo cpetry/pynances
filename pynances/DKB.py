@@ -32,7 +32,6 @@ class DKB(object):
         df.rename(columns={'Auftraggeber / Begünstigter': columnNaming._client}, inplace=True)
         df.rename(columns={'Betrag (EUR)': columnNaming._value}, inplace=True)
         df = df[df.columns[~df.columns.str.contains('Unnamed:')]]
-        #df['Kosten'] = pd.Series(np.random.randn(len(df.index)), index=df.index)
 
         # changing headers
         df.insert(2, columnNaming._type, pd.Series(columnNaming._unknownType, index=df.index))
@@ -62,6 +61,7 @@ class DKB(object):
         # add account number
         with open(filename, 'rt') as f:
             accountNumber = list(csv.reader(f,delimiter=';'))[0][1]
+            accountNumber = accountNumber.replace('*','.') # regex
             df.insert(0, columnNaming._account, pd.Series(accountNumber, index=df.index))
 
         currentMoney = DKB.getCurrentMoney(filename)

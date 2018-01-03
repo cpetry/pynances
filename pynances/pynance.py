@@ -46,9 +46,11 @@ class Pynance():
             self._account = 'account'
             if language[0] == 'de_DE':
                 self._unknownType = 'Undefiniert'
+                self._transfer = 'Verschiebungen'
             else:
                 self._unknownType = 'undefined'
-    
+                self._transfer = 'transfer'
+
     def __init__(self):
         self.df = None;
         self.accountNumbers = []
@@ -104,27 +106,30 @@ class Pynance():
         elif banktype == 'VR_giro':
             (accountNumber, currentMoney, df) = VR().readCSV_giro(filename, self.columnNaming)
             
-        self.accountNumbers.append(accountNumber)
         
         if df.empty:
             return
         
-        self.currentMoney[accountNumber] = currentMoney
-
-        #print(df.head())
         df.set_index(self.columnNaming._date, inplace=True)
+        
+        #remove empty entries
+        df = df[df[self.columnNaming._value] != 0]
         
         if isinstance(self.df, pd.DataFrame):
             self.df = self.df.append(df)
         else:
             self.df = df;
         
-        #print(df.columns)
-        #if 'Kontonummer' in self.df.columns:
-        #    self.df.ix[self.df.Kontonummer.str.contains('|'.join(self.accountNumbers), flags=re.IGNORECASE)==True, 'Typ'] = 'Verschiebungen'
+        
+        condition = self.df[self.columnNaming._client].str.contains('|'.join(self.accountNumbers), flags=re.IGNORECASE)==True
+        self.df.ix[condition, self.columnNaming._type] = self.columnNaming._transfer
         self.df.sort_index(ascending=1, inplace=True)
         
-    
+        # add to account numbers
+        self.accountNumbers.append(accountNumber)
+        # add to current money
+        self.currentMoney[accountNumber] = currentMoney
+        
         
         
     def createMonthlySums(self, columnDict, filterPosValues=False, filterNegValues=False, negateValues=False):
@@ -134,7 +139,7 @@ class Pynance():
         columnClient = self.columnNaming._client
 
         monthly = pd.DataFrame();
-                
+                        
         for key, value in columnDict.items():
             if type(value) is list:
                 for v in value:
@@ -145,7 +150,8 @@ class Pynance():
                 monthly = monthly.append(part)
         
         # set unknown types
-        monthly = monthly.append(self.df[self.df[columnType] == self.columnNaming._unknownType])
+        unknownTypes = self.df[self.df[columnType] == self.columnNaming._unknownType]
+        monthly = monthly.append(unknownTypes)
         
         if filterPosValues:
             monthly = monthly.ix[monthly[columnValue] <= 0]
@@ -153,6 +159,9 @@ class Pynance():
             monthly = monthly.ix[monthly[columnValue] > 0]
         if negateValues:
             monthly[columnValue] = monthly[columnValue]*-1;
+
+        if monthly.empty:
+            return monthly
             
         monthly.index = monthly.index.to_period('M')
         monthly = monthly.loc[:,[columnType, columnValue, columnClient]]
@@ -161,8 +170,7 @@ class Pynance():
         aggFunc = { columnValue: { columnValue : lambda x: np.sum(x)}, columnInfo: { columnInfo : lambda x: '<br>'.join(x)}}
         monthlyTypes = monthly.groupby([monthly.index,columnType]).agg(aggFunc)
         monthlyTypes.columns = monthlyTypes.columns.droplevel(0)
-        ausgaben = monthlyTypes
-        return ausgaben
+        return monthlyTypes
         
     def plotCurrentMoney(self):
         dictlist = []
@@ -180,25 +188,38 @@ class Pynance():
                     }]
         })
         
+    def getMonthly(self, columnDict, filterPosValues=False, filterNegValues=False, negateValues=False,):
+        monthly = self.createMonthlySums(columnDict, filterPosValues, filterNegValues, negateValues)
+        monthly = monthly.unstack(1)[self.columnNaming._value].abs()
+        monthly.reset_index(inplace=True)
+        monthly.fillna(0, inplace=True)
+        monthlyTable = monthly.describe()
+        monthlyTable['sum'] = monthly.describe().sum(axis=1)
+        return monthlyTable
+    
+    
     def plotMonthlyStackedBar(self, columnDict, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, showUnknownTypes=True, plotInNotebook=True):
         columnValue = self.columnNaming._value
         columnInfo = self.columnNaming._info
         columnDate = self.columnNaming._date
 
-        ausgaben = self.createMonthlySums(columnDict, filterPosValues, filterNegValues, negateValues)
+        monthly = self.createMonthlySums(columnDict, filterPosValues, filterNegValues, negateValues)
+        if monthly.empty:
+            print('Dataframe is empty!')
+            return
         
         # detailed info about payments 
-        ausgabenInfo = ausgaben.unstack(1)[columnInfo]
-        ausgabenInfo.reset_index(inplace=True)
+        monthlyInfo = monthly.unstack(1)[columnInfo]
+        monthlyInfo.reset_index(inplace=True)
 
         # rough values and month dates
-        ausgabenValue = ausgaben.unstack(1)[columnValue].abs()
-        ausgabenValue.reset_index(inplace=True)
+        monthlyValue = monthly.unstack(1)[columnValue]
+        monthlyValue.reset_index(inplace=True)
         #print(ausgabenValue.head())
-        if columnDate in ausgabenValue.columns:
-            ausgabenValue = ausgabenValue.set_index(columnDate)
-        elif 'index' in ausgabenValue.columns:
-            ausgabenValue = ausgabenValue.set_index('index')
+        if columnDate in monthlyValue.columns:
+            monthlyValue = monthlyValue.set_index(columnDate)
+        elif 'index' in monthlyValue.columns:
+            monthlyValue = monthlyValue.set_index('index')
         
         plotColumnsList = []
         for key, value in columnDict.items():
@@ -214,13 +235,13 @@ class Pynance():
                 
         data = []
         for column in plotColumnsList:
-            if column == "index" or column not in ausgabenValue.columns:
+            if column == "index" or column not in monthlyValue.columns:
                 continue
             data.append(
                 Bar(
-                    x=ausgabenValue.index.map(str),
-                    y=ausgabenValue[column],
-                    text=ausgabenInfo[column],
+                    x=monthlyValue.index.map(str),
+                    y=monthlyValue[column],
+                    text=monthlyInfo[column],
                     name=column,
                     hoverlabel=dict( font=dict(color='white', size=8))
                 ),
