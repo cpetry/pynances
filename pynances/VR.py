@@ -15,11 +15,11 @@ class VR(object):
         return currentMoney
 
     @staticmethod
-    def readCSV_giro(self, filename, columnNaming):
+    def readCSV_giro(filename, columnNaming):
         locale.setlocale(locale.LC_NUMERIC, '')
         df = pd.read_csv(filename, skiprows=12, skipfooter=2, sep=';', engine='python', parse_dates=[0,1], \
-                         converters={'Umsatz': lambda x: float(x.replace('.','').replace(',','.'))}, dayfirst=True, index_col=0)
-        df.rename(columns={'Belegdatum': columnNaming._date}, inplace=True)
+                         converters={'Umsatz': lambda x: float(x.replace('.','').replace(',','.'))}, dayfirst=True)
+        df.rename(columns={'Buchungstag': columnNaming._date}, inplace=True)
         df.rename(columns={'Empfänger/Zahlungspflichtiger': columnNaming._client}, inplace=True)
         df.rename(columns={'Vorgang/Verwendungszweck': columnNaming._info}, inplace=True)
         df.rename(columns={'Umsatz': columnNaming._value}, inplace=True)
@@ -37,7 +37,9 @@ class VR(object):
         df.drop(' ', axis=1, inplace=True)
         df = df[df.columns[~df.columns.str.contains('Unnamed:')]]
         
-        accountNumber = list(csv.reader(f,delimiter=';'))[5][1]
+        with open(filename, 'rt') as f:
+            csvList = list(csv.reader(f,delimiter=';'))
+            accountNumber = csvList[5][1]
         currentMoney = VR.getCurrentMoney(filename)
         return (accountNumber, currentMoney, df)
         

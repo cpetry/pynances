@@ -33,6 +33,7 @@ import numpy as np
 
 #local imports
 from pynances.DKB import DKB
+from pynances.VR import VR
 
 class Pynance():
     class ColumnNaming():
@@ -109,6 +110,10 @@ class Pynance():
         
         if df.empty:
             return
+        
+        # changing header
+        df.insert(1, self.columnNaming._type, pd.Series(self.columnNaming._unknownType, index=df.index))
+        df.insert(0, self.columnNaming._account, pd.Series(accountNumber, index=df.index))
         
         df.set_index(self.columnNaming._date, inplace=True)
         
