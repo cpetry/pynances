@@ -3,6 +3,14 @@ import locale
 import csv
 
 class VR(object):
+        
+    @staticmethod
+    def convertToIBAN(accountNumber, blz, loc="DE"):
+        bban = str(blz) + str(accountNumber).zfill(10)
+        countryString = str(ord(loc[0]) - ord('A') + 10) + str(ord(loc[1]) - ord('A') + 10) + str("00")
+        checksum = int(bban + countryString)
+        checkNumber = str(98 - (checksum % 97)).zfill(2)
+        return loc + checkNumber + bban
 
     @staticmethod
     def getCurrentMoney(filepath):
@@ -39,7 +47,9 @@ class VR(object):
         
         with open(filename, 'rt') as f:
             csvList = list(csv.reader(f,delimiter=';'))
+            blz = csvList[4][1]
             accountNumber = csvList[5][1]
+            accountNumber = VR.convertToIBAN(accountNumber, blz)
         currentMoney = VR.getCurrentMoney(filename)
         return (accountNumber, currentMoney, df)
         

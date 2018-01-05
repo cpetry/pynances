@@ -57,7 +57,6 @@ class Pynance():
         self.accountNumbers = []
         self.currentMoney = {}
         self.columnNaming = self.ColumnNaming()
-        pass
     
     def setGroups(self, groupDict):
         self.groupDict = groupDict
