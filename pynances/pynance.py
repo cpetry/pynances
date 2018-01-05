@@ -35,7 +35,7 @@ import numpy as np
 from pynances.DKB import DKB
 from pynances.VR import VR
 
-class Pynance():
+class Pynance(object):
     class ColumnNaming():
         def __init__(self):
             language = locale.getdefaultlocale()
@@ -57,6 +57,7 @@ class Pynance():
         self.accountNumbers = []
         self.currentMoney = {}
         self.columnNaming = self.ColumnNaming()
+    
     
     def setGroups(self, groupDict):
         self.groupDict = groupDict
@@ -188,9 +189,28 @@ class Pynance():
             "data": [{
                 "values": zippedList[1],
                 "labels": zippedList[0],
-                "type": "pie"
-                    }]
+                "type": "pie",
+                "textinfo" : "value"}],
+            "layout": Layout(
+                title="Current money",
+                autosize=False,
+                width=800,
+                height=350,
+            )
         })
+        return plotly.offline.plot({
+            "data": [{
+                "values": zippedList[1],
+                "labels": zippedList[0],
+                "type": "pie",
+                "textinfo" : "value"}],
+            "layout": Layout(
+                title="Current money",
+                autosize=False,
+                width=800,
+                height=350,
+                )},
+            output_type='div')
         
     def getMonthly(self, columnDict, filterPosValues=False, filterNegValues=False, negateValues=False,):
         monthly = self.createMonthlySums(columnDict, filterPosValues, filterNegValues, negateValues)
@@ -258,6 +278,7 @@ class Pynance():
                     barmode='stack',
                     title=plotTitle,
                     autosize=True,
+                    height=500,
                 )
             })
         return plotly.offline.plot({
@@ -266,5 +287,6 @@ class Pynance():
                     barmode='stack',
                     title=plotTitle,
                     autosize=True,
+                    height=500,
                 )
             }, output_type='div')
