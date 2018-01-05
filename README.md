@@ -1,6 +1,6 @@
 # Pynances
 Python library to read in bank account csv files and print out some financial graphs.
-See [example page](https://cpetry.github.io/pynances/index.html) for an example html output.
+See [example page](https://cpetry.github.io/pynances/example.html) for an example html output.
 
 - Usable inside python notebooks (jupyter).
 - Can generate interactive (javascript) local html pages. 
@@ -22,8 +22,8 @@ categories = {
 
 Example graph outputs (plotly) see below:
 
-![Expenses screenshot](https://github.com/cpetry/pynances/blob/master/screenshot_expenses.PNG "Expenses")
+![Expenses screenshot](https://cpetry.github.io/pynances/screenshot_expenses.PNG "Expenses")
 
-![Income screenshot](https://github.com/cpetry/pynances/blob/master/screenshot_income.PNG "Expenses")
+![Income screenshot](https://cpetry.github.io/pynances/screenshot_income.PNG "Expenses")
 
 See example notebook for usage!
