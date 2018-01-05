@@ -1,5 +1,6 @@
 # Pynances
 Python library to read in bank account csv files and print out some financial graphs.
+See [example page](https://cpetry.github.io/pynances/index.html) for an example html output.
 
 - Usable inside python notebooks (jupyter).
 - Can generate interactive (javascript) local html pages. 
