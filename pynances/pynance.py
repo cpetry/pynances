@@ -34,6 +34,7 @@ import numpy as np
 #local imports
 from pynances.DKB import DKB
 from pynances.VR import VR
+from pynances.consors import Consors
 
 class Pynance(object):
     class ColumnNaming():
@@ -42,20 +43,22 @@ class Pynance(object):
             self._date = 'date'
             self._client = 'client'
             self._value = 'value'
-            self._type = 'typ'
             self._info = 'info'
             self._account = 'account'
             if language[0] == 'de_DE':
                 self._unknownType = 'Undefiniert'
                 self._transfer = 'Verschiebungen'
+                self._type = 'Typ'
             else:
                 self._unknownType = 'undefined'
                 self._transfer = 'transfer'
+                self._type = 'type'
 
     def __init__(self):
         self.df = None;
         self.accountNumbers = []
         self.currentMoney = {}
+        self.parsedCategories = []
         self.columnNaming = self.ColumnNaming()
     
     
@@ -106,13 +109,18 @@ class Pynance(object):
             (accountNumber, currentMoney, df) = DKB().readCSV_visa(filename, self.columnNaming)
         elif banktype == 'VR_giro':
             (accountNumber, currentMoney, df) = VR().readCSV_giro(filename, self.columnNaming)
+        elif banktype == 'Consors_giro':
+            (accountNumber, currentMoney, df) = Consors().readCSV_giro(filename, self.columnNaming)
             
         
         if df.empty:
             return
         
         # changing header
-        df.insert(1, self.columnNaming._type, pd.Series(self.columnNaming._unknownType, index=df.index))
+        if self.columnNaming._type not in df.columns:
+            df.insert(1, self.columnNaming._type, pd.Series(self.columnNaming._unknownType, index=df.index))
+        else:
+            self.parsedCategories.extend(df[self.columnNaming._type].unique())
         df.insert(0, self.columnNaming._account, pd.Series(accountNumber, index=df.index))
         
         df.set_index(self.columnNaming._date, inplace=True)
@@ -137,7 +145,7 @@ class Pynance(object):
         
         
         
-    def createMonthlySums(self, columnDict, filterPosValues=False, filterNegValues=False, negateValues=False):
+    def createMonthlySums(self, columnDict, filterPosValues=False, filterNegValues=False, negateValues=False, useParsedCategories=True):
         columnValue = self.columnNaming._value
         columnType = self.columnNaming._type
         columnInfo = self.columnNaming._info
@@ -152,6 +160,11 @@ class Pynance(object):
                     monthly = monthly.append(part)
             else:
                 part = self.df[self.df[columnType] == key]
+                monthly = monthly.append(part)
+        
+        if useParsedCategories:
+            for parsedCat in self.parsedCategories:
+                part = self.df[self.df[columnType].str.contains(re.escape(parsedCat))]
                 monthly = monthly.append(part)
         
         # set unknown types
@@ -222,7 +235,7 @@ class Pynance(object):
         return monthlyTable
     
     
-    def plotMonthlyStackedBar(self, columnDict, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, showUnknownTypes=True, plotInNotebook=True):
+    def plotMonthlyStackedBar(self, columnDict, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, showUnknownTypes=True, plotInNotebook=True, useParsedCategories=True):
         columnValue = self.columnNaming._value
         columnInfo = self.columnNaming._info
         columnDate = self.columnNaming._date
@@ -253,6 +266,10 @@ class Pynance(object):
                         plotColumnsList.append(v)
             elif (value not in plotColumnsList):
                 plotColumnsList.append(value)
+                
+        if useParsedCategories:
+            for parsedCat in self.parsedCategories:
+                plotColumnsList.append(parsedCat)
                 
         if showUnknownTypes:
             plotColumnsList.append(self.columnNaming._unknownType)
