@@ -1,35 +1,14 @@
-# Import all libraries needed for the tutorial
-
-# General syntax to import specific functions in a library: 
-##from (library) import (specific library function)
-from pandas import DataFrame, read_csv
-
-import numpy as np
-# General syntax to import a library but no functions: 
-##import (library) as (give the library a nickname/alias)
-import matplotlib.pyplot as plt
+# General syntax to import a library but no functions:
 import pandas as pd #this is how I usually import pandas
-import sys #only needed to determine Python version number
-import matplotlib #only needed to determine Matplotlib version number
-import time
-import functools
-import operator
+import numpy as np
 import re
 import locale
-import calendar
-import collections
+import plotly.offline as plotlyOffline
+import csv
 import datetime
-from IPython.display import display
-import plotly
 from plotly.graph_objs import Bar, Layout, Pie
 
 pd.options.display.float_format = '{:,.2f}'.format
-
-import pandas as pd
-from pandas import DataFrame, read_csv
-from datetime import datetime
-
-import numpy as np
 
 #local imports
 from pynances.DKB import DKB
@@ -145,7 +124,7 @@ class Pynance(object):
         return set(self.df[self.columnNaming._type].unique())
         
         
-    def createMonthlySums(self, categories=None, filterPosValues=False, filterNegValues=False, negateValues=False, useParsedCategories=True):
+    def createRangedSums(self, range='M', categories=None, filterPosValues=False, filterNegValues=False, negateValues=False, useParsedCategories=True, func='sum'):
         columnValue = self.columnNaming._value
         columnType = self.columnNaming._type
         columnInfo = self.columnNaming._info
@@ -181,11 +160,11 @@ class Pynance(object):
         if monthly.empty:
             return monthly
             
-        monthly.index = monthly.index.to_period('M')
+        monthly.index = monthly.index.to_period(range)
         monthly = monthly.loc[:,[columnType, columnValue, columnClient]]
         monthly[columnInfo] = monthly[columnValue].apply(str) + ', ' + monthly[columnClient].apply(str) # concat money, info
         monthly[columnInfo] = monthly[columnInfo].str[:30] # shorten it to 30 chars
-        aggFunc = { columnValue: { columnValue : lambda x: np.sum(x)}, columnInfo: { columnInfo : lambda x: '<br>'.join(x)}}
+        aggFunc = { columnValue: { columnValue : func }, columnInfo: { columnInfo : lambda x: '<br>'.join(x)}}
         monthlyTypes = monthly.groupby([monthly.index,columnType]).agg(aggFunc)
         monthlyTypes.columns = monthlyTypes.columns.droplevel(0)
         return monthlyTypes
@@ -213,7 +192,7 @@ class Pynance(object):
     
         #print(dictlist)
         zippedList = list(map(list, zip(*dictlist)))
-        plotly.offline.iplot({
+        plotlyOffline.iplot({
             "data": [{
                 "values": zippedList[1],
                 "labels": zippedList[0],
@@ -226,7 +205,7 @@ class Pynance(object):
                 height=350,
             )
         })
-        return plotly.offline.plot({
+        return plotlyOffline.plot({
             "data": [{
                 "values": zippedList[1],
                 "labels": zippedList[0],
@@ -239,9 +218,47 @@ class Pynance(object):
                 height=350,
                 )},
             output_type='div')
-        
-    def getMonthly(self, categories, filterPosValues=False, filterNegValues=False, negateValues=False,):
-        monthly = self.createMonthlySums(categories, filterPosValues, filterNegValues, negateValues)
+
+    def plotAverageYearly(self, categories, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, useParsedCategories=True):
+        monthly = self.createRangedSums('M', categories, filterPosValues, filterNegValues, negateValues)
+        monthly = monthly.unstack(1)[self.columnNaming._value].abs()
+        monthly.reset_index(inplace=True)
+        monthly.set_index(self.columnNaming._date, inplace=True)
+
+        types = monthly.columns
+        mask = (monthly.index > '2017-1-1') & (monthly.index <= '2017-12-31')
+        yearly = monthly.fillna(0).loc[mask].mean().round(2)
+        print(yearly)
+
+        plotlyOffline.iplot({
+            "data": [{
+                "values": yearly,
+                "labels": types,
+                "type": "pie",
+                "textinfo" : "value"}],
+            "layout": Layout(
+                title="Average",
+                autosize=False,
+                width=800,
+                height=350,
+            )
+        })
+        return plotlyOffline.plot({
+            "data": [{
+                "values": yearly,
+                "labels": types,
+                "type": "pie",
+                "textinfo" : "value"}],
+            "layout": Layout(
+                title="Average",
+                autosize=False,
+                width=800,
+                height=350,
+                )},
+            output_type='div')
+
+    def getRanged(self, categories, range='M', filterPosValues=False, filterNegValues=False, negateValues=False,):
+        monthly = self.createRangedSums(range, categories, filterPosValues, filterNegValues, negateValues)
         monthly = monthly.unstack(1)[self.columnNaming._value].abs()
         monthly.reset_index(inplace=True)
         monthly.fillna(0, inplace=True)
@@ -254,7 +271,7 @@ class Pynance(object):
         columnInfo = self.columnNaming._info
         columnDate = self.columnNaming._date
 
-        monthly = self.createMonthlySums(categories, filterPosValues, filterNegValues, negateValues)
+        monthly = self.createRangedSums('M', categories, filterPosValues, filterNegValues, negateValues)
         if monthly.empty:
             print('Dataframe is empty!')
             return
@@ -284,8 +301,7 @@ class Pynance(object):
             )
             
         return data
-        
-    
+
     def plotMonthlyStackedBar(self, categories, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, plotInNotebook=True, useParsedCategories=True):
         
         
@@ -294,7 +310,7 @@ class Pynance(object):
         currentMoneyData = self.createCurrentMoney()
         
         # IPython notebook        
-        plotly.offline.iplot({
+        plotlyOffline.iplot({
                 "data": data,
                 "layout": Layout(
                     barmode='stack',
@@ -303,7 +319,7 @@ class Pynance(object):
                     height=500,
                 )
             })        
-        return plotly.offline.plot({
+        return plotlyOffline.plot({
                 "data": data,
                 "layout": Layout(
                     barmode='stack',
@@ -314,32 +330,37 @@ class Pynance(object):
             }, output_type='div')
     
     def createMonthlyHTMLReport(self, filepath):
-        divCurrentMoney = self.plotCurrentMoney()
-        
-        categories = self.getCategories()
-        categories.remove(self.columnNaming._transfer)
-
-        ids = {'expenses': 'Monatliche Kosten',
+        ids = {'currentMoney': 'Aktuell',
+               'expenses': 'Monatliche Kosten',
                'expensesDescribe': 'Monatliche Kosten Tabelle',
                'income': 'Einkommen',
                'transfer' : 'Verschiebungen'}
 
+        divCurrentMoney = self.plotCurrentMoney()
+        divCurrentMoney = '<div id="'+ids['currentMoney']+'" class="tabcontent">' + divCurrentMoney + '</div>'
+
+        categories = self.getCategories()
+        categories.remove(self.columnNaming._transfer)
+
+        dateRange = [datetime.date(2015,1,1), datetime.datetime.now()]
+
         divExpenses = self.plotMonthlyStackedBar(categories, plotTitle=ids['expenses'], filterPosValues=True, negateValues=True)
-        divExpenses = '<div id="'+ids['expenses']+'" class="tabcontent">' + divExpenses + '</div>'
-        monthlyExpenses = self.getMonthly(categories, filterPosValues=True, negateValues=True)
-        divExpensesDescribe = "<div style='height:40px;'></div>" + monthlyExpenses.to_html()
-        divExpensesDescribe = '<div id="'+ids['expensesDescribe']+'" class="tabcontent">' + divExpensesDescribe + '</div>'
+        #monthlyExpenses = self.getMonthly(categories, filterPosValues=True, negateValues=True)
+        #divExpensesDescribe = "<div style='height:40px;'></div>" + monthlyExpenses.to_html()
+        #divExpensesDescribe = '<div id="'+ids['expensesDescribe']+'" class="tabcontent">' + divExpensesDescribe + '</div>'
+        divExpensesAverage = self.plotAverageYearly(categories, plotTitle=ids['expenses'], filterPosValues=True, negateValues=True)
+        divExpenses = '<div id="' + ids['expenses'] + '" class="tabcontent">' + divExpenses + divExpensesAverage + '</div>'
 
         divIncome = self.plotMonthlyStackedBar(categories, filterNegValues=True, plotTitle=ids['income'])
         divIncome = '<div id="'+ids['income']+'" class="tabcontent">' + divIncome + '</div>'
 
-        divTransfer = self.plotMonthlyStackedBar([self.columnNaming._transfer], plotTitle=ids['transfer'])
+        divTransfer = self.plotMonthlyStackedBar([self.columnNaming._transfer], plotTitle=ids['transfer'] )
         divTransfer = '<div id="'+ids['transfer']+'" class="tabcontent">' + divTransfer + '</div>'
 
         divTabs = self.getTabDiv(list(ids.values()))
         divJS = self.getJS()
         f = open(filepath,'w')
-        f.write(divTabs + divExpenses + divExpensesDescribe + divIncome + divTransfer + divJS)
+        f.write(divTabs + divCurrentMoney + divExpenses + divIncome + divTransfer + divJS)
         f.close()
 
     def getTabDiv(self, ids):

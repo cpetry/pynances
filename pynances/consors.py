@@ -1,6 +1,5 @@
 import pandas as pd
 import locale
-import csv
 
 class Consors(object):
         
