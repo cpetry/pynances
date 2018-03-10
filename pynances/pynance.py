@@ -228,7 +228,7 @@ class Pynance(object):
         types = monthly.columns
         mask = (monthly.index > '2017-1-1') & (monthly.index <= '2017-12-31')
         yearly = monthly.fillna(0).loc[mask].mean().round(2)
-        print(yearly)
+        #print(yearly)
 
         plotlyOffline.iplot({
             "data": [{

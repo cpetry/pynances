@@ -13,9 +13,10 @@ class DKB(object):
             #if bank == "DKB":
             moneyStr = rows[4][1]
             if moneyStr.find(',') > 0:
-                currentMoney = moneyStr.replace('.', '').replace(',','.')
-            elif moneyStr.find('EUR'):
-                currentMoney = moneyStr[:moneyStr.find('EUR')]
+                moneyStr = moneyStr.replace('.', '').replace(',','.')
+            if moneyStr.find('EUR'):
+                moneyStr = moneyStr[:moneyStr.find('EUR')]
+            currentMoney = float(moneyStr)
             #elif bank == "VR":
             #    currentMoney = rows[-1][-2].replace('.', '').replace(',','.')
                 
@@ -32,6 +33,7 @@ class DKB(object):
         df.rename(columns={'Auftraggeber / Begünstigter': columnNaming._client}, inplace=True)
         df.rename(columns={'Betrag (EUR)': columnNaming._value}, inplace=True)
         df = df[df.columns[~df.columns.str.contains('Unnamed:')]]
+        df = df[df[columnNaming._client] != ""]
 
         # add account number
         accountNumber=""
