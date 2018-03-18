@@ -6,6 +6,7 @@ import locale
 import plotly.offline as plotlyOffline
 import csv
 import datetime
+from collections import OrderedDict
 from plotly.graph_objs import Bar, Layout, Pie
 
 pd.options.display.float_format = '{:,.2f}'.format
@@ -237,7 +238,7 @@ class Pynance(object):
                 "type": "pie",
                 "textinfo" : "value"}],
             "layout": Layout(
-                title="Average",
+                title=plotTitle,
                 autosize=False,
                 width=800,
                 height=350,
@@ -250,7 +251,7 @@ class Pynance(object):
                 "type": "pie",
                 "textinfo" : "value"}],
             "layout": Layout(
-                title="Average",
+                title=plotTitle,
                 autosize=False,
                 width=800,
                 height=350,
@@ -330,11 +331,11 @@ class Pynance(object):
             }, output_type='div')
     
     def createMonthlyHTMLReport(self, filepath):
-        ids = {'currentMoney': 'Aktuell',
-               'expenses': 'Monatliche Kosten',
-               'expensesDescribe': 'Monatliche Kosten Tabelle',
-               'income': 'Einkommen',
-               'transfer' : 'Verschiebungen'}
+        ids = OrderedDict([('currentMoney', 'Aktuell'),
+                           ('expenses', 'Monatliche Kosten'),
+                           ('expensesDescribe', 'Monatliche Kosten Tabelle'),
+                           ('income', 'Einkommen'),
+                           ('transfer', 'Verschiebungen')])
 
         divCurrentMoney = self.plotCurrentMoney()
         divCurrentMoney = '<div id="'+ids['currentMoney']+'" class="tabcontent">' + divCurrentMoney + '</div>'
@@ -348,7 +349,7 @@ class Pynance(object):
         #monthlyExpenses = self.getMonthly(categories, filterPosValues=True, negateValues=True)
         #divExpensesDescribe = "<div style='height:40px;'></div>" + monthlyExpenses.to_html()
         #divExpensesDescribe = '<div id="'+ids['expensesDescribe']+'" class="tabcontent">' + divExpensesDescribe + '</div>'
-        divExpensesAverage = self.plotAverageYearly(categories, plotTitle=ids['expenses'], filterPosValues=True, negateValues=True)
+        divExpensesAverage = self.plotAverageYearly(categories, plotTitle="Durchschnittliche " + ids['expenses'], filterPosValues=True, negateValues=True)
         divExpenses = '<div id="' + ids['expenses'] + '" class="tabcontent">' + divExpenses + divExpensesAverage + '</div>'
 
         divIncome = self.plotMonthlyStackedBar(categories, filterNegValues=True, plotTitle=ids['income'])
@@ -358,7 +359,8 @@ class Pynance(object):
         divTransfer = '<div id="'+ids['transfer']+'" class="tabcontent">' + divTransfer + '</div>'
 
         divTabs = self.getTabDiv(list(ids.values()))
-        divJS = self.getJS()
+        defaultTabOpen = ids['currentMoney']
+        divJS = self.getJS(defaultTabOpen)
         f = open(filepath,'w')
         f.write(divTabs + divCurrentMoney + divExpenses + divIncome + divTransfer + divJS)
         f.close()
@@ -404,12 +406,12 @@ class Pynance(object):
 """
         div += '<div class="tab">'
         for id in ids:
-            div += '<button class="tablinks" onclick="openTab(event, \'' + id + '\')" >' + id + '</button>'
+            div += '<button id="button_' + id + '" class="tablinks" onclick="openTab(event, \'' + id + '\')" >' + id + '</button>'
         div += '</div>'
         return div
 
-    def getJS(self):
-        return """
+    def getJS(self, defaultTabOpen):
+        jsCode = """
         <script>
         function hideAll(){
             // Get all elements with class="tabcontent" and hide them
@@ -432,9 +434,11 @@ class Pynance(object):
 
             // Show the current tab, and add an "active" class to the button that opened the tab
             document.getElementById(tabName).style.display = "block";
-            evt.currentTarget.className += " active";
+            if (typeof evt != 'undefined')
+                evt.currentTarget.className += " active";
         } 
         
-        hideAll()
-        </script>
-        """
+        hideAll();""";
+        jsCode += 'document.getElementById("button_' + defaultTabOpen + '").onclick();';
+        jsCode += '</script>';
+        return jsCode;
