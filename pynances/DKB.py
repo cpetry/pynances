@@ -34,6 +34,7 @@ class DKB(object):
         df.rename(columns={'Betrag (EUR)': columnNaming._value}, inplace=True)
         df = df[df.columns[~df.columns.str.contains('Unnamed:')]]
         df = df[df[columnNaming._client] != ""]
+        df = df[df[columnNaming._client].notnull()]
 
         # add account number
         accountNumber=""
@@ -54,6 +55,7 @@ class DKB(object):
         df.rename(columns={'Beschreibung': columnNaming._client}, inplace=True)
         df.rename(columns={'Betrag (EUR)': columnNaming._value}, inplace=True)
         df = df[df.columns[~df.columns.str.contains('Unnamed:')]]
+        df = df[df[columnNaming._client] != ""]
 
         # add account number
         with open(filename, 'rt') as f:

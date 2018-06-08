@@ -227,7 +227,7 @@ class Pynance(object):
         monthly.set_index(self.columnNaming._date, inplace=True)
 
         types = monthly.columns
-        mask = (monthly.index > '2017-1-1') & (monthly.index <= '2017-12-31')
+        mask = (monthly.index > datetime.datetime.now() - datetime.timedelta(days=1*365)) & (monthly.index <= datetime.datetime.now())
         yearly = monthly.fillna(0).loc[mask].mean().round(2)
         #print(yearly)
 
@@ -251,7 +251,7 @@ class Pynance(object):
                 "type": "pie",
                 "textinfo" : "value"}],
             "layout": Layout(
-                title=plotTitle,
+                title=plotTitle + " (" + str(yearly.sum()) + ")",
                 autosize=False,
                 width=800,
                 height=350,
@@ -333,7 +333,6 @@ class Pynance(object):
     def createMonthlyHTMLReport(self, filepath):
         ids = OrderedDict([('currentMoney', 'Aktuell'),
                            ('expenses', 'Monatliche Kosten'),
-                           ('expensesDescribe', 'Monatliche Kosten Tabelle'),
                            ('income', 'Einkommen'),
                            ('transfer', 'Verschiebungen')])
 
@@ -346,9 +345,6 @@ class Pynance(object):
         dateRange = [datetime.date(2015,1,1), datetime.datetime.now()]
 
         divExpenses = self.plotMonthlyStackedBar(categories, plotTitle=ids['expenses'], filterPosValues=True, negateValues=True)
-        #monthlyExpenses = self.getMonthly(categories, filterPosValues=True, negateValues=True)
-        #divExpensesDescribe = "<div style='height:40px;'></div>" + monthlyExpenses.to_html()
-        #divExpensesDescribe = '<div id="'+ids['expensesDescribe']+'" class="tabcontent">' + divExpensesDescribe + '</div>'
         divExpensesAverage = self.plotAverageYearly(categories, plotTitle="Durchschnittliche " + ids['expenses'], filterPosValues=True, negateValues=True)
         divExpenses = '<div id="' + ids['expenses'] + '" class="tabcontent">' + divExpenses + divExpensesAverage + '</div>'
 
