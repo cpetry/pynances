@@ -1,6 +1,5 @@
 # General syntax to import a library but no functions:
 import pandas as pd #this is how I usually import pandas
-import numpy as np
 import re
 import locale
 import plotly.offline as plotlyOffline
@@ -15,6 +14,7 @@ pd.options.display.float_format = '{:,.2f}'.format
 from pynances.DKB import DKB
 from pynances.VR import VR
 from pynances.consors import Consors
+from pynances.paypal import Paypal
 
 class Pynance(object):
     class ColumnNaming():
@@ -90,8 +90,11 @@ class Pynance(object):
             (accountNumber, currentMoney, df) = VR().readCSV_giro(filename, self.columnNaming)
         elif banktype == 'Consors_giro':
             (accountNumber, currentMoney, df) = Consors().readCSV_giro(filename, self.columnNaming)
-            
-        
+        elif banktype == 'Paypal':
+            (accountNumber, currentMoney, df) = Paypal().readCSV(filename, self.columnNaming)
+        else:
+            raise ValueError('banktype "' + banktype + '"not defined!')
+
         if df.empty:
             return
         
