@@ -28,10 +28,13 @@ class Paypal(object):
         df.rename(columns={'Name': columnNaming._client}, inplace=True)
         df.rename(columns={'Netto': columnNaming._value}, inplace=True)
         df.rename(columns={'Typ': columnNaming._type}, inplace=True)
+        df.rename(columns={'Artikelbezeichnung': 'name2'}, inplace=True)
         df = df[df["Status"] == "Abgeschlossen"]
         df = df[df[columnNaming._client].notnull()]
-        df[columnNaming._type] = "Paypal"
-
+        
+        df.loc[df[columnNaming._type] != 'Spendenzahlung', columnNaming._type] = "Paypal" 
+        df[columnNaming._client] = df[columnNaming._client] + ', ' + df['name2']
+		
         # add account number
         accountNumber = "Paypal"
 

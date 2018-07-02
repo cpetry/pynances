@@ -167,7 +167,7 @@ class Pynance(object):
         monthly.index = monthly.index.to_period(range)
         monthly = monthly.loc[:,[columnType, columnValue, columnClient]]
         monthly[columnInfo] = monthly[columnValue].apply(str) + ', ' + monthly[columnClient].apply(str) # concat money, info
-        monthly[columnInfo] = monthly[columnInfo].str[:30] # shorten it to 30 chars
+        monthly[columnInfo] = monthly[columnInfo].str[:50] # shorten it to 50 chars
         aggFunc = { columnValue: { columnValue : func }, columnInfo: { columnInfo : lambda x: '<br>'.join(x)}}
         monthlyTypes = monthly.groupby([monthly.index,columnType]).agg(aggFunc)
         monthlyTypes.columns = monthlyTypes.columns.droplevel(0)
