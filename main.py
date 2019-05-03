@@ -15,5 +15,7 @@ if __name__ == '__main__':
         else:
             pyn.readCSV(filepath, type)
 
+    pyn.markTransferActions()
+
     pyn.setGroups(config['categories'])
     pyn.createMonthlyHTMLReport(config["output"])

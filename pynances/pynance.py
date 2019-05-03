@@ -22,9 +22,11 @@ class Pynance(object):
             language = locale.getdefaultlocale()
             self._date = 'date'
             self._client = 'client'
+            self._iban = 'iban'
             self._value = 'value'
             self._info = 'info'
             self._account = 'account'
+            self._usageType = 'usage'
             if language[0] == 'de_DE':
                 self._unknownType = 'Undefiniert'
                 self._transfer = 'Verschiebungen'
@@ -36,26 +38,29 @@ class Pynance(object):
 
     def __init__(self):
         self.df = None;
-        self.accountNumbers = []
+        self.accountNumbers = set()
         self.currentMoney = {}
         self.parsedCategories = []
         self.columnNaming = self.ColumnNaming()
 
     def setGroups(self, groupDict):
         self.groupDict = groupDict
-        self.renameSimilars(self.columnNaming._client, self.columnNaming._type)
+        self.renameSimilars(self.columnNaming._client)
 
-        
-    def renameSimilars(self, renameField, groupField):
+        for key, values in self.groupDict.items():
+            clientFilterMask = self.df[self.columnNaming._client].str.contains('|'.join(map(re.escape, values)), flags=re.IGNORECASE)==True
+            #usageFilterMask = self.df[self.columnNaming._usageType].str.contains('|'.join(map(re.escape, values)), flags=re.IGNORECASE)==True
+            #combinedMask = clientFilterMask | usageFilterMask
+            combinedMask = clientFilterMask
+            self.df.ix[combinedMask, self.columnNaming._type] = key
+            
+    def renameSimilars(self, renameField):
         # renaming similar stuff
         for key, values in self.groupDict.items():
             for val in values:
-                self.df[renameField]= self.df[renameField].str.replace(val+".*", val, case=False)
-
-        for key, values in self.groupDict.items():
-            group_filter = self.df[renameField].str.contains('|'.join(map(re.escape, values)), flags=re.IGNORECASE)==True
-            self.df.ix[group_filter, groupField] = key
-
+                old = val
+                new = re.escape(val)+".*"
+                self.df[renameField] = self.df[renameField].str.replace(new, old, case=False)
     
     def getCurrentMoney(self, filepath, bank):
         locale.setlocale( locale.LC_ALL, 'German' ) 
@@ -114,46 +119,51 @@ class Pynance(object):
             self.df = self.df.append(df)
         else:
             self.df = df;
-        
-        condition = self.df[self.columnNaming._client].str.contains('|'.join(self.accountNumbers), flags=re.IGNORECASE)==True
-        self.df.ix[condition, self.columnNaming._type] = self.columnNaming._transfer
-        self.df.sort_index(ascending=1, inplace=True)
+
         
         # add to account numbers
-        self.accountNumbers.append(accountNumber)
+        self.accountNumbers.add(accountNumber)
         # add to current money
         self.currentMoney[accountNumber] = currentMoney
-        
+
+    def markTransferActions(self):
+        condition = self.df[self.columnNaming._iban].str.contains('|'.join(self.accountNumbers), flags=re.IGNORECASE)==True
+        self.df.ix[condition, self.columnNaming._type] = self.columnNaming._transfer
+        self.df.sort_index(ascending=1, inplace=True)
+
     def getCategories(self):
         return set(self.df[self.columnNaming._type].unique())
         
-        
-    def createRangedSums(self, range='M', categories=None, filterPosValues=False, filterNegValues=False, negateValues=False, useParsedCategories=True, func='sum'):
+    def getFlatCategoryList(self, categories, useParsedCategories=True):
+        flat_list = []
+        for sublist in categories:
+            if type(sublist) is list:
+                for item in sublist:
+                    flat_list.append(item)
+            else:
+                flat_list.append(sublist)
+            if useParsedCategories:
+                flat_list.extend(self.parsedCategories)
+        return flat_list
+
+    
+    def createRangedSums(self, range='M', categories=None, filterPosValues=False, filterNegValues=False, negateValues=False, useParsedCategories=True, removeCategories=False):
         columnValue = self.columnNaming._value
         columnType = self.columnNaming._type
         columnInfo = self.columnNaming._info
         columnClient = self.columnNaming._client
 
         monthly = pd.DataFrame();
-        
-        if categories == None or not categories:
-            monthly = self.df
-        
-        else:
-            flat_list = []
-            for sublist in categories:
-                if type(sublist) is list:
-                    for item in sublist:
-                        flat_list.append(item)
-                else:
-                    flat_list.append(sublist)
-            if useParsedCategories:
-                flat_list.extend(self.parsedCategories)
 
-            for category in set(flat_list):
+        flat_list = self.getFlatCategoryList(categories, useParsedCategories)
+        
+        for category in set(flat_list):
+            if removeCategories:
+                part = self.df[~self.df[columnType].str.contains(re.escape(category))]
+            else:
                 part = self.df[self.df[columnType].str.contains(re.escape(category))]
-                monthly = monthly.append(part)
-                
+            monthly = monthly.append(part)
+
         if filterPosValues:
             monthly = monthly[monthly[columnValue] <= 0]
         if filterNegValues:
@@ -163,31 +173,37 @@ class Pynance(object):
 
         if monthly.empty:
             return monthly
-            
-        monthly.index = monthly.index.to_period(range)
+
+        if hasattr(monthly.index, 'to_period'):
+            monthly.index = monthly.index.to_period(range)
+
         monthly = monthly.loc[:,[columnType, columnValue, columnClient]]
-        monthly[columnInfo] = monthly[columnValue].apply(str) + ', ' + monthly[columnClient].apply(str) # concat money, info
-        monthly[columnInfo] = monthly[columnInfo].str[:50] # shorten it to 50 chars
-        aggFunc = { columnValue: { columnValue : func }, columnInfo: { columnInfo : lambda x: '<br>'.join(x)}}
-        monthlyTypes = monthly.groupby([monthly.index,columnType]).agg(aggFunc)
-        monthlyTypes.columns = monthlyTypes.columns.droplevel(0)
+
+        if useParsedCategories:
+            monthly[columnInfo] = monthly[columnValue].apply(str) + ', ' + monthly[columnClient].apply(str) # concat money, info
+            monthly[columnInfo] = monthly[columnInfo].str[:50] # shorten it to 50 chars
+            aggFunc = { columnValue: { columnValue : 'sum' }, columnInfo: { columnInfo : lambda x: '<br>'.join(x)}}
+            monthlyTypes = monthly.groupby([monthly.index,columnType]).agg(aggFunc)
+            monthlyTypes.columns = monthlyTypes.columns.droplevel(0)
+        else:
+            monthlyTypes = monthly.groupby(monthly.index).sum()
+            monthlyTypes[columnInfo] = monthlyTypes[columnValue].apply(str)
         return monthlyTypes
-    
+
     def createCurrentMoney(self):
         dictlist = []
         for key, value in self.currentMoney.items():
             temp = [key,value]
             dictlist.append(temp)
-    
+
         #print(dictlist)
         zippedList = list(map(list, zip(*dictlist)))
         data = Pie(values=zippedList[1],
                 labels=zippedList[0],
-                textinfo="value",        
+                textinfo="value",
                 visible=False)
         return data
-         
-        
+
     def plotCurrentMoney(self):
         dictlist = []
         for key, value in self.currentMoney.items():
@@ -270,46 +286,67 @@ class Pynance(object):
         monthlyTable['sum'] = monthly.describe().sum(axis=1)
         return monthlyTable
     
-    def createMonthlyStacked(self, categories, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, useParsedCategories=True):
+    def createMonthlyStacked(self, categories, filterPosValues=False, filterNegValues=False, negateValues=False, useParsedCategories=True, removeCategories=False):
         columnValue = self.columnNaming._value
         columnInfo = self.columnNaming._info
         columnDate = self.columnNaming._date
 
-        monthly = self.createRangedSums('M', categories, filterPosValues, filterNegValues, negateValues)
+        monthly = self.createRangedSums('M', categories, filterPosValues, filterNegValues, negateValues, useParsedCategories, removeCategories)
         if monthly.empty:
             print('Dataframe is empty!')
             return
         
-        # detailed info about payments 
-        monthlyInfo = monthly.unstack(1)[columnInfo]
-        monthlyInfo.reset_index(inplace=True)
+        # detailed info about payments
+        if useParsedCategories:
+            monthlyInfo = monthly.unstack(1)[columnInfo]
+            monthlyInfo.reset_index(inplace=True)
+            # rough values and month dates
+            monthlyValue = monthly.unstack(1)[columnValue]
+            monthlyValue.reset_index(inplace=True)
+            if columnDate in monthlyValue.columns:
+                monthlyValue = monthlyValue.set_index(columnDate)
+            elif 'index' in monthlyValue.columns:
+                monthlyValue = monthlyValue.set_index('index')
+        else:
+            monthlyValue = monthly[columnValue]
+            monthlyInfo = monthly[columnInfo]
 
-        # rough values and month dates
-        monthlyValue = monthly.unstack(1)[columnValue]
-        monthlyValue.reset_index(inplace=True)
-        if columnDate in monthlyValue.columns:
-            monthlyValue = monthlyValue.set_index(columnDate)
-        elif 'index' in monthlyValue.columns:
-            monthlyValue = monthlyValue.set_index('index')
-                
+        return [monthlyValue, monthlyInfo]
+
+    def createBarChart(self, monthlyValue, monthlyInfo, useParsedCategories=True):
         data = []
-        for column in monthlyValue.columns:
+
+        if useParsedCategories:
+            for column in monthlyValue.columns:
+                textInfo = ""
+                #print(column)
+                textInfo = monthlyInfo[column]
+                data.append(
+                    Bar(
+                        x=monthlyValue.index.map(str),
+                        y=monthlyValue[column],
+                        text=textInfo,
+                        name=column,
+                        hoverlabel=dict( font=dict(color='white', size=8))
+                    ),
+                )
+        else:
             data.append(
                 Bar(
                     x=monthlyValue.index.map(str),
-                    y=monthlyValue[column],
-                    text=monthlyInfo[column],
-                    name=column,
-                    hoverlabel=dict( font=dict(color='white', size=8))
+                    y=monthlyValue,
+                    text=monthlyInfo,
+                    hoverlabel=dict(font=dict(color='white', size=8))
                 ),
             )
-            
+
         return data
 
-    def plotMonthlyStackedBar(self, categories, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, plotInNotebook=True, useParsedCategories=True):
-        
-        
-        data = self.createMonthlyStacked(categories, plotTitle, filterPosValues, filterNegValues, negateValues, useParsedCategories)
+
+    def plotMonthlyStackedBar(self, categories, plotTitle, filterPosValues=False, filterNegValues=False, negateValues=False, plotInNotebook=True, useParsedCategories=True, removeCategories=False):
+            
+        monthly = self.createMonthlyStacked(categories, filterPosValues, filterNegValues, negateValues, useParsedCategories, removeCategories)
+        data = self.createBarChart(monthly[0], monthly[1], useParsedCategories)
         
         currentMoneyData = self.createCurrentMoney()
         
@@ -337,6 +374,7 @@ class Pynance(object):
         ids = OrderedDict([('currentMoney', 'Aktuell'),
                            ('expenses', 'Monatliche Kosten'),
                            ('income', 'Einkommen'),
+                           ('diff', 'Differenz'),
                            ('transfer', 'Verschiebungen')])
 
         divCurrentMoney = self.plotCurrentMoney()
@@ -352,16 +390,25 @@ class Pynance(object):
         divExpenses = '<div id="' + ids['expenses'] + '" class="tabcontent">' + divExpenses + divExpensesAverage + '</div>'
 
         divIncome = self.plotMonthlyStackedBar(categories, filterNegValues=True, plotTitle=ids['income'])
-        divIncome = '<div id="'+ids['income']+'" class="tabcontent">' + divIncome + '</div>'
+        divIncomeAverage = self.plotAverageYearly(categories, plotTitle="Durchschnittliche " + ids['income'], filterNegValues=True)
+        divIncome = '<div id="'+ids['income']+'" class="tabcontent">' + divIncome + divIncomeAverage +'</div>'
 
-        divTransfer = self.plotMonthlyStackedBar([self.columnNaming._transfer], plotTitle=ids['transfer'] )
+        divDiff = self.plotMonthlyStackedBar([self.columnNaming._transfer], plotTitle="Differenz", useParsedCategories=False, removeCategories=True);
+        #divDiff.remove(self.columnNaming._transfer)
+        divDiff = '<div id="'+ids['diff']+'" class="tabcontent">' + divDiff +'</div>'
+
+        divTransfer = self.plotMonthlyStackedBar([self.columnNaming._transfer], plotTitle=ids['transfer'], useParsedCategories=False )
         divTransfer = '<div id="'+ids['transfer']+'" class="tabcontent">' + divTransfer + '</div>'
+
+        divAccounts = '<div>' + '<br>'.join(self.accountNumbers) + '</div>'
 
         divTabs = self.getTabDiv(list(ids.values()))
         defaultTabOpen = ids['currentMoney']
         divJS = self.getJS(defaultTabOpen)
+
+
         f = open(filepath,'w')
-        f.write(divTabs + divCurrentMoney + divExpenses + divIncome + divTransfer + divJS)
+        f.write(divAccounts + divTabs + divCurrentMoney + divExpenses + divIncome + divDiff + divTransfer + divJS)
         f.close()
 
     def getTabDiv(self, ids):

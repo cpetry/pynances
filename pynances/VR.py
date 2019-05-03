@@ -28,6 +28,7 @@ class VR(object):
         df = pd.read_csv(filename, skiprows=12, skipfooter=2, sep=';', engine='python', parse_dates=[0,1], \
                          converters={'Umsatz': lambda x: float(x.replace('.','').replace(',','.'))}, dayfirst=True)
         df.rename(columns={'Buchungstag': columnNaming._date}, inplace=True)
+        df.rename(columns={'IBAN': columnNaming._iban}, inplace=True)
         df.rename(columns={'Empfänger/Zahlungspflichtiger': columnNaming._client}, inplace=True)
         df.rename(columns={'Vorgang/Verwendungszweck': columnNaming._info}, inplace=True)
         df.rename(columns={'Umsatz': columnNaming._value}, inplace=True)
@@ -36,7 +37,6 @@ class VR(object):
         df.loc[df.ix[:,-1] == 'S', columnNaming._value] = 0 - df[df.ix[:,-1] == 'S'][columnNaming._value]
         df.drop('Auftraggeber/Zahlungsempfänger', axis=1, inplace=True)
         df.drop('Konto-Nr.', axis=1, inplace=True)
-        df.drop('IBAN', axis=1, inplace=True)
         df.drop('BIC', axis=1, inplace=True)
         df.drop('BLZ', axis=1, inplace=True)
         df.drop('Kundenreferenz', axis=1, inplace=True)
